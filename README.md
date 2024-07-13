@@ -1,2 +1,4 @@
-# osfi_data
-Web crawler that scrapes Canadian financial institutions' data from OSFI's public data portal
+# OSFI Data 
+Not affiliated with the Office of the Superintendent of Financial Institutions (OSFI), Canada's primary regulatory for federally-regulated financial institutions.
+
+
