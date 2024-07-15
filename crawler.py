@@ -45,7 +45,9 @@ class OSFICrawler():
         
         # Switch to the selected iframe containing the OSFI bank form
         self.driver.switch_to.frame(self._DATA_IFRAME_ID)
-    
+
+        # Initialize parent window
+        self.parent_window = self.driver.current_window_handle
     
     
     def get_available_banks(self, type='domestic'):
@@ -58,7 +60,9 @@ class OSFICrawler():
             
         return banks
     
-    def get_available_dates(self):
+    def get_available_dates(self, bank='Z005'):
+        self._set_domestic_bank(bank_code=bank)
+        
         return self._get_available_monthly_dates()
     
     def get_monthly_balance_sheet(self, bank, month):
@@ -76,10 +80,13 @@ class OSFICrawler():
         self._set_month(month)
         self._set_domestic_bank(bank)
         self._click_submit()
-        self._change_page()
+        
+        self._switch_to_data_page()
 
         table_df = pd.read_html(StringIO(self.driver.page_source))
         time.sleep(0.25)
+        self._switch_to_home_page()
+        
         return {'assets': table_df[0], 'liabilities and equity': table_df[1]}
 
         
@@ -88,6 +95,15 @@ class OSFICrawler():
         submit_button = self.driver.find_element(By.ID, "DTIWebPartManager_gwpDTIBankControl1_DTIBankControl1_submitButton")
         submit_button.click()
         time.sleep(0.5)
+    
+    def _switch_to_data_page(self):
+        self.driver.switch_to.window(self.driver.window_handles[1])
+
+    def _switch_to_home_page(self):
+        self.driver.switch_to.window(self.driver.window_handles[0])
+        
+        # Switch to the selected iframe containing the OSFI bank form
+        self.driver.switch_to.frame(self._DATA_IFRAME_ID)
     
     def _change_page(self):
         p = self.driver.current_window_handle
@@ -99,7 +115,6 @@ class OSFICrawler():
         #switch focus to child window
             if(w!=p):
                 self.driver.switch_to.window(w)
-    
     
     def _monthly_selector(self):
         
