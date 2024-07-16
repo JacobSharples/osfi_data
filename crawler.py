@@ -65,7 +65,7 @@ class OSFICrawler():
         
         return self._get_available_monthly_dates()
     
-    def get_monthly_balance_sheet(self, bank, month):
+    def get_monthly_balance_sheet(self, bank, month, clean=True):
         '''
         Both are bank code and month code
         
@@ -87,9 +87,36 @@ class OSFICrawler():
         time.sleep(0.25)
         self._switch_to_home_page()
         
+        if clean:
+            return {'assets': self.clean_assets(table_df[0]), 'liabilities': table_df[1]}
+        
         return {'assets': table_df[0], 'liabilities and equity': table_df[1]}
 
+    def clean_assets(self, asset):
+        # TODO: Automatically check period
+        # TODO: only need to load once
+        template = self.get_template('balance_sheet', 3)
+        template = pd.read_excel("./templates/templates.xlsx", sheet_name='V3', index_col='row_number')
+
+        df = (asset
+                .merge(template, left_index=True, right_index=True)
+                .assign(
+                    item_name = lambda x: x['Item Name'].str.extract('[.)](.*)')[0].str.strip(),
+                    total_currency = lambda x: x['Total Currency'].astype('int64'),
+                    foreign_currency = lambda x: x['Foreign Currency'].astype('int64')
+                )
+                [['Section', 'Category', 'Subcategory', 'item_name', 'foreign_currency', 'total_currency', 'Subset']]
+        )
         
+        return df
+    
+    def get_template(self, financial_statement, version):
+        PATH = "./templates/"
+    
+        if financial_statement == 'balance_sheet':
+            template = pd.read_excel(PATH + "templates.xlsx", sheet_name=f"V{version}")
+        
+        return template
     
     def _click_submit(self):
         submit_button = self.driver.find_element(By.ID, "DTIWebPartManager_gwpDTIBankControl1_DTIBankControl1_submitButton")
