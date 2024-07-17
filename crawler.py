@@ -82,15 +82,28 @@ class OSFICrawler():
         self._click_submit()
         
         self._switch_to_data_page()
-
+        date = self._extract_date(self.driver.page_source)
         table_df = pd.read_html(StringIO(self.driver.page_source))
+        
         time.sleep(0.25)
         self._switch_to_home_page()
         
         if clean:
-            return {'assets': self.clean_assets(table_df[0]), 'liabilities': table_df[1]}
+            return {'date': date,'assets': self.clean_assets(table_df[0]), 'liabilities': table_df[1]}
         
         return {'assets': table_df[0], 'liabilities and equity': table_df[1]}
+
+    def _extract_date(self, page):
+        '''
+        Extract details from page: date
+        page: selenium driver
+        '''
+        #self.driver.find_element(by=By.CLASS_NAME, "maindiv text-center")
+        bs = BeautifulSoup(page, features='lxml')
+        rows = bs.find('div', {'class':'maindiv text-center'})
+        rows.find_all('p')[1].text.replace('As At', '').strip()
+
+        
 
     def clean_assets(self, asset):
         # TODO: Automatically check period
@@ -102,8 +115,8 @@ class OSFICrawler():
                 .merge(template, left_index=True, right_index=True)
                 .assign(
                     item_name = lambda x: x['Item Name'].str.extract('[.)](.*)')[0].str.strip(),
-                    total_currency = lambda x: x['Total Currency'].astype('int64'),
-                    foreign_currency = lambda x: x['Foreign Currency'].astype('int64')
+                    total_currency = lambda x: x['Total Currency'].astype('int64').multiply(1000),
+                    foreign_currency = lambda x: x['Foreign Currency'].astype('int64').multiply(1000)
                 )
                 [['Section', 'Category', 'Subcategory', 'item_name', 'foreign_currency', 'total_currency', 'Subset']]
         )
